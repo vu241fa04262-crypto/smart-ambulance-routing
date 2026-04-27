@@ -10,8 +10,6 @@ A real-time intelligent web application that optimizes ambulance routes using GP
 ---
 
 
----
-
 ## 🚀 Features
 
 - 🗺️ Real-time route calculation using road networks
