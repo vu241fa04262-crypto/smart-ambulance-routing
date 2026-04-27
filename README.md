@@ -9,8 +9,6 @@ A real-time intelligent web application that optimizes ambulance routes using GP
 
 ---
 
-## 📸 Demo Screenshot
-![App Screenshot](screenshot.png)
 
 ---
 
