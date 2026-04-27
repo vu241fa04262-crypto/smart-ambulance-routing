@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🚑 Smart Ambulance Dashboard</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      display: flex;
+      height: 100vh;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .sidebar {
+      width: 320px;
+      background: #020617;
+      padding: 20px;
+      border-right: 1px solid #1e293b;
+      overflow-y: auto;
+    }
+
+    h2 {
+      color: #22c55e;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #1e293b;
+      color: white;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #ef4444;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #dc2626;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 15px;
+    }
+
+    canvas {
+      margin-top: 10px;
+      background: #020617;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .main {
+      flex: 1;
+      position: relative;
+    }
+
+    #map {
+      height: 100%;
+    }
+
+    .topbar {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>🚑 Smart Control</h2>
+
+  <input id="start" placeholder="Start (A)">
+  <input id="end" placeholder="Destination (D)">
+
+  <button onclick="getRoute()">🚨 Start Emergency</button>
+
+  <div class="card">
+    <strong>Status</strong>
+    <p id="routeInfo">No route selected</p>
+    <p id="eta">ETA: --</p>
+    <p id="traffic">Traffic: --</p>
+  </div>
+
+  <div class="card">
+    <strong>📊 Live Traffic Analytics</strong>
+    <canvas id="trafficChart"></canvas>
+  </div>
+
+</div>
+
+<div class="main">
+  <div class="topbar">🚦 System Active</div>
+  <div id="map"></div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+var map = L.map('map').setView([17.385, 78.486], 12);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+let ambulance, routeLine;
+
+// Chart Setup
+let trafficData = [30, 50, 40, 60, 70];
+let labels = ["1", "2", "3", "4", "5"];
+
+const ctx = document.getElementById('trafficChart').getContext('2d');
+
+const trafficChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Traffic Level',
+      data: trafficData,
+      borderColor: '#22c55e',
+      borderWidth: 2,
+      tension: 0.4
+    }]
+  },
+  options: {
+    plugins: {
+      legend: {
+        labels: { color: "white" }
+      }
+    },
+    scales: {
+      x: { ticks: { color: "white" }},
+      y: { ticks: { color: "white" }}
+    }
+  }
+});
+
+function getRoute() {
+  let start = document.getElementById("start").value;
+  let end = document.getElementById("end").value;
+
+  fetch("/route", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({start, end})
+  })
+  .then(res => res.json())
+  .then(data => {
+
+    if (!data.route) {
+      document.getElementById("routeInfo").innerHTML = "❌ Invalid route";
+      return;
+    }
+
+    document.getElementById("routeInfo").innerHTML =
+      "Route: " + data.route.join(" → ");
+
+    let eta = data.route.length * 2;
+    document.getElementById("eta").innerHTML = "ETA: " + eta + " mins";
+
+    let coords = {
+      A: [17.385, 78.486],
+      B: [17.395, 78.496],
+      C: [17.405, 78.506],
+      D: [17.415, 78.516]
+    };
+
+    let latlngs = data.route.map(n => coords[n]);
+
+    if (routeLine) map.removeLayer(routeLine);
+    routeLine = L.polyline(latlngs, {color: '#22c55e', weight: 5}).addTo(map);
+
+    if (ambulance) map.removeLayer(ambulance);
+
+    let i = 0;
+    ambulance = L.marker(latlngs[0]).addTo(map);
+
+    let move = setInterval(() => {
+      if (i >= latlngs.length) {
+        clearInterval(move);
+        return;
+      }
+      ambulance.setLatLng(latlngs[i]);
+      i++;
+    }, 800);
+  });
+}
+
+// Live Analytics Update
+setInterval(() => {
+  let newValue = Math.floor(Math.random() * 100);
+
+  trafficData.push(newValue);
+  trafficData.shift();
+
+  trafficChart.data.datasets[0].data = trafficData;
+  trafficChart.update();
+
+  document.getElementById("traffic").innerHTML =
+    "Traffic: " + newValue + "%";
+}, 2000);
+
+</script>
+
+</body>
+</html>
