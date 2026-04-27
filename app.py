@@ -38,10 +38,11 @@ def real_route():
         return jsonify({"error": "Failed to fetch route"}), 500
 
 
+import os
+
 if __name__ == "__main__":
     print("🚀 Smart Ambulance System Running...")
     app.run(
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
-        debug=True
+        port=int(os.environ.get("PORT", 5000))
     )
